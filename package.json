@@ -1,0 +1,20 @@
+{
+  "name": "walk-dog-be",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node src/seed.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "js-yaml": "^4.3.1",
+    "mongoose": "^8.4.1",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^9.0.1"
+  }
+}
