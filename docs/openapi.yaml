@@ -1,0 +1,287 @@
+openapi: 3.0.0
+info:
+  title: Walk Dog API
+  version: 0.1.0
+  description: >
+    Simple dog-walk booking API.
+    Import this file into Postman via Import → File, or open Swagger UI at
+    http://localhost:3000/api/docs when the server is running.
+servers:
+  - url: http://localhost:3000
+    description: Local
+
+tags:
+  - name: System
+  - name: Slots
+  - name: Walkers
+  - name: Reservations
+  - name: Reviews
+
+paths:
+  /api/health:
+    get:
+      tags: [System]
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /api/slots:
+    get:
+      tags: [Slots]
+      summary: List predefined availability slots
+      responses:
+        '200':
+          description: Predefined slots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slots:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                      - '09:00-10:00'
+                      - '10:00-11:00'
+                      - '14:00-15:00'
+                      - '16:00-17:00'
+                      - '17:00-18:00'
+
+  /api/walkers:
+    get:
+      tags: [Walkers]
+      summary: Search walkers by city/area (case-insensitive substring)
+      parameters:
+        - in: query
+          name: location
+          required: true
+          schema:
+            type: string
+          example: Zagreb
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: Paginated walker list (newest first)
+        '400':
+          description: Missing location
+    post:
+      tags: [Walkers]
+      summary: Register as a dog walker (Become dog walker)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, location, availableSlots]
+              properties:
+                firstName:
+                  type: string
+                  example: Ana
+                lastName:
+                  type: string
+                  example: Horvat
+                email:
+                  type: string
+                  example: ana.horvat@example.com
+                location:
+                  type: string
+                  example: Zagreb
+                services:
+                  type: array
+                  items:
+                    type: string
+                    enum: [dog walk, dog bath]
+                  example: [dog walk, dog bath]
+                availableSlots:
+                  type: array
+                  items:
+                    type: string
+                  example: ['09:00-10:00', '16:00-17:00']
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Validation error
+
+  /api/walkers/{id}:
+    get:
+      tags: [Walkers]
+      summary: Get walker profile with reviews
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Walker detail
+        '404':
+          description: Not found
+
+  /api/reservations:
+    get:
+      tags: [Reservations]
+      summary: List reservations for a walker by email
+      parameters:
+        - in: query
+          name: email
+          required: true
+          schema:
+            type: string
+          example: ana.horvat@example.com
+      responses:
+        '200':
+          description: Reservation list
+        '400':
+          description: Missing email
+    post:
+      tags: [Reservations]
+      summary: Create a walk reservation (status pending)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [walkerId, timeSlot, dog, contact]
+              properties:
+                walkerId:
+                  type: string
+                timeSlot:
+                  type: string
+                  example: '16:00-17:00'
+                dog:
+                  type: object
+                  required: [breed, age, weight]
+                  properties:
+                    breed:
+                      type: string
+                      example: Labrador
+                    age:
+                      type: number
+                      example: 3
+                    weight:
+                      type: number
+                      example: 28
+                contact:
+                  type: object
+                  required: [phone, email]
+                  properties:
+                    phone:
+                      type: string
+                      example: '+38591111222'
+                    email:
+                      type: string
+                      example: owner@example.com
+      responses:
+        '201':
+          description: Created with walkId valid for reviews for 24h
+        '400':
+          description: Validation error
+        '404':
+          description: Walker not found
+        '409':
+          description: Slot no longer available
+
+  /api/reservations/{walkId}:
+    get:
+      tags: [Reservations]
+      summary: Get reservation by public walkId
+      parameters:
+        - in: path
+          name: walkId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reservation
+        '404':
+          description: Not found
+
+  /api/reservations/{walkId}/status:
+    patch:
+      tags: [Reservations]
+      summary: Accept or reject a reservation
+      parameters:
+        - in: path
+          name: walkId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [accepted, rejected]
+                email:
+                  type: string
+                  description: Walker email (simple ownership check)
+                  example: ana.horvat@example.com
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Invalid status
+        '403':
+          description: Email does not match walker
+        '404':
+          description: Not found
+
+  /api/reviews:
+    post:
+      tags: [Reviews]
+      summary: Submit a review using a walkId (valid for 24h after reservation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [walkId, stars, comment]
+              properties:
+                walkId:
+                  type: string
+                stars:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+                comment:
+                  type: string
+                  maxLength: 150
+                  example: Great walk, dog came back happy!
+      responses:
+        '201':
+          description: Review created
+        '400':
+          description: Validation / expired / already reviewed
+        '404':
+          description: Walk not found
